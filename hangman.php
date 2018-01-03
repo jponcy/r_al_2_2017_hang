@@ -1,5 +1,12 @@
 <?php
 
+$possibilities = ['mystere', 't' => 'titi', 'toto'];
+
+foreach ($possibilities as $k => $v) {
+    echo "Key: $k, Val: $v\n";
+}
+
+
 $myst = 'mystere';
 
 echo 'Give it a try: ';
