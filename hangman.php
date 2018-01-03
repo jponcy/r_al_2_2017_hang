@@ -1,15 +1,9 @@
 <?php
 
-$possibilities = ['mystere', 't' => 'titi', 'toto'];
+$possibilities = ['mystere', 'titi', 'toto'];
+$myst = $possibilities[rand(0, count($possibilities) - 1)];
 
-foreach ($possibilities as $k => $v) {
-    echo "Key: $k, Val: $v\n";
-}
-
-
-$myst = 'mystere';
-
-echo 'Give it a try: ';
+echo "Try to find '$myst': ";
 $handle = fopen('php://stdin', 'r');
 $line = trim(fgets($handle));
 
