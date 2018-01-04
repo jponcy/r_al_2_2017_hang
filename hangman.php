@@ -7,6 +7,7 @@ $possibilities = ['mystere', 'titi', 'toto'];
 $myst = $possibilities[rand(0, count($possibilities) - 1)];
 $found = '';
 $equals = false;
+$old = []; // Records letters provide by user.
 
 /*
  * Initialize found.
@@ -32,6 +33,14 @@ for ($life = 5; !$equals && $life > 0; -- $life) {
         case 1: // Letter.
             $ok = false;
 
+            // Tests of already tested.
+            if (in_array($line, $old)) {
+                echo 'Already tried!' . PHP_EOL;
+                ++ $life;
+                break;
+            }
+
+            // Replace occurences.
             for ($i = 0; $i < strlen($myst); ++ $i) {
                 if ($myst[$i] == $line) {
                     $found[$i] = $line;
@@ -39,6 +48,7 @@ for ($life = 5; !$equals && $life > 0; -- $life) {
                 }
             }
 
+            // Print result message.
             if ($ok) {
                 ++ $life;
 
@@ -53,6 +63,7 @@ for ($life = 5; !$equals && $life > 0; -- $life) {
                 echo 'Letter not found!';
             }
 
+            $old[] = $line;
             echo PHP_EOL;
 
             break;
