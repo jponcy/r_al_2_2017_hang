@@ -21,6 +21,7 @@ for ($i = 0; $i < strlen($myst); ++ $i) {
  */
 for ($life = 5; !$equals && $life > 0; -- $life) {
     echo "State $found" . PHP_EOL;
+    if (count($old) > 0) echo 'You already try: ' . implode(', ', $old) . PHP_EOL;
     echo "Try to find '$myst' (you have $life lifes): ";
     $handle = fopen('php://stdin', 'r');
     $line = strtolower(trim(fgets($handle)));
@@ -69,6 +70,7 @@ for ($life = 5; !$equals && $life > 0; -- $life) {
             break;
         default: // Word.
             $equals = $line == $myst;
+            $old[] = $line;
             printf('You try "%s", that\'s %scorrect%s', $line, ($equals ? '' : 'in'), PHP_EOL);
             break;
 
