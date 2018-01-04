@@ -1,20 +1,70 @@
 <?php
 
+function choiceWord() {
+    $possibilities = file('dico.txt');
+    /* Or 
+     * $possibilities = explode("\n", file_get_contents('dico.txt'));
+     * Not need trim oin this case.
+     */
+    $myst = trim($possibilities[rand(0, count($possibilities) - 1)]);
+
+    return $myst;
+}
+
+/**
+ * Initialize found.
+ */
+function getHidden(string $word): string {
+    $result = '';
+    
+    for ($i = 0; $i < strlen($word); ++ $i) {
+        $result .= '_';
+    }
+
+    return $result;
+}
+
+function treatCmd(string $line, string $myst): bool {
+    $matches = [];
+    $result = false;
+
+    if (preg_match('/^\/(\w+)( \w+)*$/', $line, $matches)) {
+        $result = true;
+
+        switch (strtolower($matches[1])) { // CMD.
+            case 'solution':
+                echo "You should find '$myst', good luck." . PHP_EOL;
+                break;
+            case 'add':
+                if (count($matches) > 2) {
+                    $dico = fopen('dico.txt', 'a+');
+
+                    foreach (explode(' ', $matches[2]) as $word) {
+                        if (trim($word) != '') {
+                            fwrite($dico, trim($word) . PHP_EOL);
+                            echo "$word add to dictionnary!" . PHP_EOL;
+                        }
+                    }
+
+                    fclose($dico);
+                }
+                break;
+            default:
+                $result = false;
+                break;
+        }
+    }
+
+    return $result;
+}
+
 /*
  * Init.
  */
-$possibilities = ['mystere', 'titi', 'toto'];
-$myst = $possibilities[rand(0, count($possibilities) - 1)];
-$found = '';
+$myst = choiceWord();
+$found = getHidden($myst);
 $equals = false;
 $old = []; // Records letters provide by user.
-
-/*
- * Initialize found.
- */
-for ($i = 0; $i < strlen($myst); ++ $i) {
-    $found .= '_';
-}
 
 /*
  * Start game.
@@ -22,9 +72,14 @@ for ($i = 0; $i < strlen($myst); ++ $i) {
 for ($life = 5; !$equals && $life > 0; -- $life) {
     echo "State $found" . PHP_EOL;
     if (count($old) > 0) echo 'You already try: ' . implode(', ', $old) . PHP_EOL;
-    echo "Try to find '$myst' (you have $life lifes): ";
+    echo "Try to find the word (you have $life lifes): ";
     $handle = fopen('php://stdin', 'r');
     $line = strtolower(trim(fgets($handle)));
+
+    if (treatCmd($line, $myst)) {
+        ++ $life;
+        continue;
+    }
 
     switch (strlen($line)) {
         case 0:
