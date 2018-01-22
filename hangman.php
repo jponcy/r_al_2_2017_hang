@@ -1,137 +1,166 @@
 <?php
 
-function choiceWord() {
-    $possibilities = file('dico.txt');
-    /* Or 
-     * $possibilities = explode("\n", file_get_contents('dico.txt'));
-     * Not need trim oin this case.
-     */
-    $myst = trim($possibilities[rand(0, count($possibilities) - 1)]);
+class Dictionary {
+    const FILE_PATH = 'dico.txt';
 
-    return $myst;
-}
+    public function randWord(): string {
+        $possibilities = file(self::FILE_PATH);
 
-/**
- * Initialize found.
- */
-function getHidden(string $word): string {
-    $result = '';
-    
-    for ($i = 0; $i < strlen($word); ++ $i) {
-        $result .= '_';
+        return trim($possibilities[rand(0, count($possibilities) - 1)]);
     }
 
-    return $result;
+    /** Adds the given words to dictionnary. */
+    public function add(string $words) {
+        $dico = fopen(self::FILE_PATH, 'a+');
+
+        foreach (explode(' ', $words) as $word) {
+            if (trim($word) != '') {
+                fwrite($dico, trim($word) . PHP_EOL);
+                echo "$word add to dictionnary!" . PHP_EOL;
+            }
+        }
+
+        fclose($dico);
+    }
 }
 
-function treatCmd(string $line, string $myst): bool {
-    $matches = [];
-    $result = false;
 
-    if (preg_match('/^\/(\w+)( \w+)*$/', $line, $matches)) {
-        $result = true;
+class Hangman {
+    private $dico;
+    private $myst;
+    private $found;
+    private $old;
 
-        switch (strtolower($matches[1])) { // CMD.
-            case 'solution':
-                echo "You should find '$myst', good luck." . PHP_EOL;
-                break;
-            case 'add':
-                if (count($matches) > 2) {
-                    $dico = fopen('dico.txt', 'a+');
+    public function __construct() {
+        $this->dico = new Dictionary();
+    }
 
-                    foreach (explode(' ', $matches[2]) as $word) {
-                        if (trim($word) != '') {
-                            fwrite($dico, trim($word) . PHP_EOL);
-                            echo "$word add to dictionnary!" . PHP_EOL;
-                        }
+    private function init() {
+        $this->myst = $this->dico->randWord();
+        $this->generateHidden();
+        $this->old = [];
+    }
+
+    /**
+     * Initialize found.
+     */
+    private function generateHidden(): string {
+        $this->found = '';
+
+        for ($i = 0; $i < strlen($this->myst); ++ $i) {
+            $this->found .= '_';
+        }
+
+        return $this->found;
+    }
+
+    private function solution() {
+        echo 'You should find \'' . $this->myst . '\', good luck.' . PHP_EOL;
+    }
+
+    private function treatCmd(string $line): bool {
+        $matches = [];
+        $result = false;
+
+        if (preg_match('/^\/(\w+)( \w+)*$/', $line, $matches)) {
+            $result = true;
+
+            switch (strtolower($matches[1])) { // CMD.
+                case 'solution':
+                    $this->solution();
+                    break;
+                case 'add':
+                    if (count($matches) > 2) {
+                        $this->dico->add($matches[2]);
                     }
+                    break;
+                default:
+                    $result = false;
+                    break;
+            }
+        }
 
-                    fclose($dico);
+        return $result;
+    }
+
+    private function treatTry(string $line) {
+        switch (strlen($line)) {
+            case 0:
+                echo 'You miss to put a letter or a word!' . PHP_EOL;
+                ++ $this->life;
+                break;
+            case 1: // Letter.
+                $ok = false;
+
+                // Tests of already tested.
+                if (in_array($line, $this->old)) {
+                    echo 'Already tried!' . PHP_EOL;
+                    ++ $this->life;
+                    break;
                 }
+
+                // Replace occurences.
+                for ($i = 0; $i < strlen($this->myst); ++ $i) {
+                    if ($this->myst[$i] == $line) {
+                        $this->found[$i] = $line;
+                        $ok = true;
+                    }
+                }
+
+                // Print result message.
+                if ($ok) {
+                    ++ $this->life;
+
+                    if ($this->myst == $this->found) {
+                        echo 'Congrats, you Win!';
+                        $this->equals = true;
+                        // exit(0); // Will be possible (no need else) in this case.
+                    } else {
+                        echo 'Letter found!';
+                    }
+                } else {
+                    echo 'Letter not found!';
+                }
+
+                $this->old[] = $line;
+                echo PHP_EOL;
+
                 break;
-            default:
-                $result = false;
+            default: // Word.
+                $this->equals = $line == $this->myst;
+                $this->old[] = $line;
+                printf('You try "%s", that\'s %scorrect%s', $line, ($this->equals ? '' : 'in'), PHP_EOL);
                 break;
+
         }
     }
 
-    return $result;
+    /**
+     * Start a game.
+     */
+    public function start() {
+        $this->init();
+        $this->equals = false;
+
+        for ($this->life = 5; !$this->equals && $this->life > 0; -- $this->life) {
+            echo 'State ' . $this->found . PHP_EOL;
+            if (count($this->old) > 0) echo 'You already try: ' . implode(', ', $this->old) . PHP_EOL;
+            echo "Try to find the word (you have $this->life lifes): ";
+            $handle = fopen('php://stdin', 'r');
+            $line = strtolower(trim(fgets($handle)));
+
+            if ($this->treatCmd($line)) {
+                ++ $this->life;
+                continue;
+            }
+
+            $this->treatTry($line);
+        };
+
+        if (!$this->equals) {
+            echo 'You lose!' . PHP_EOL;
+        }
+    }
 }
 
-/*
- * Init.
- */
-$myst = choiceWord();
-$found = getHidden($myst);
-$equals = false;
-$old = []; // Records letters provide by user.
-
-/*
- * Start game.
- */
-for ($life = 5; !$equals && $life > 0; -- $life) {
-    echo "State $found" . PHP_EOL;
-    if (count($old) > 0) echo 'You already try: ' . implode(', ', $old) . PHP_EOL;
-    echo "Try to find the word (you have $life lifes): ";
-    $handle = fopen('php://stdin', 'r');
-    $line = strtolower(trim(fgets($handle)));
-
-    if (treatCmd($line, $myst)) {
-        ++ $life;
-        continue;
-    }
-
-    switch (strlen($line)) {
-        case 0:
-            echo 'You miss to put a letter or a word!' . PHP_EOL;
-            ++ $life;
-            break;
-        case 1: // Letter.
-            $ok = false;
-
-            // Tests of already tested.
-            if (in_array($line, $old)) {
-                echo 'Already tried!' . PHP_EOL;
-                ++ $life;
-                break;
-            }
-
-            // Replace occurences.
-            for ($i = 0; $i < strlen($myst); ++ $i) {
-                if ($myst[$i] == $line) {
-                    $found[$i] = $line;
-                    $ok = true;
-                }
-            }
-
-            // Print result message.
-            if ($ok) {
-                ++ $life;
-
-                if ($myst == $found) {
-                    echo 'Congrats, you Win!';
-                    $equals = true;
-                    // exit(0); // Will be possible (no need else) in this case.
-                } else {
-                    echo 'Letter found!';
-                }
-            } else {
-                echo 'Letter not found!';
-            }
-
-            $old[] = $line;
-            echo PHP_EOL;
-
-            break;
-        default: // Word.
-            $equals = $line == $myst;
-            $old[] = $line;
-            printf('You try "%s", that\'s %scorrect%s', $line, ($equals ? '' : 'in'), PHP_EOL);
-            break;
-
-    }
-};
-
-if (!$equals) {
-    echo 'You lose!' . PHP_EOL;
-}
+(new Hangman)->start();
